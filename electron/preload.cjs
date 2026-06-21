@@ -21,4 +21,9 @@ contextBridge.exposeInMainWorld("api", {
   deleteSubscription: (id) => ipcRenderer.invoke("data:deleteSubscription", id),
 
   setTitleBarOverlay: (isDark) => ipcRenderer.invoke("ui:setTitleBarOverlay", isDark),
+
+  onUpdateAvailable: (cb) => ipcRenderer.on("updater:update-available", cb),
+  onDownloadProgress: (cb) => ipcRenderer.on("updater:download-progress", (_e, pct) => cb(pct)),
+  onUpdateReady: (cb) => ipcRenderer.on("updater:update-ready", cb),
+  quitAndInstall: () => ipcRenderer.send("updater:quit-and-install"),
 });

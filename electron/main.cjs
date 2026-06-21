@@ -1,4 +1,5 @@
 const { app, BrowserWindow, ipcMain, shell } = require("electron");
+const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const store = require("./store.cjs");
 
@@ -38,7 +39,26 @@ function createWindow() {
     shell.openExternal(url);
     return { action: "deny" };
   });
+
+  if (!isDev) {
+    autoUpdater.checkForUpdates();
+  }
 }
+
+autoUpdater.autoDownload = true;
+autoUpdater.autoInstallOnAppQuit = true;
+
+autoUpdater.on("update-available", () => {
+  mainWindow?.webContents.send("updater:update-available");
+});
+
+autoUpdater.on("download-progress", (progress) => {
+  mainWindow?.webContents.send("updater:download-progress", Math.round(progress.percent));
+});
+
+autoUpdater.on("update-downloaded", () => {
+  mainWindow?.webContents.send("updater:update-ready");
+});
 
 app.whenReady().then(() => {
   store.init();
@@ -57,6 +77,8 @@ app.on("window-all-closed", () => {
 /* ---------------------------------------------------------------- */
 /* IPC: data layer                                                  */
 /* ---------------------------------------------------------------- */
+
+ipcMain.on("updater:quit-and-install", () => autoUpdater.quitAndInstall());
 
 ipcMain.handle("ui:setTitleBarOverlay", (_e, isDark) => {
   mainWindow?.setTitleBarOverlay(isDark ? OVERLAY_DARK : OVERLAY_LIGHT);
