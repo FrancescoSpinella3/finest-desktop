@@ -1,5 +1,6 @@
-import { ArrowRightLeft, CreditCard, Goal, LayoutGrid, Tags } from "lucide-react";
+import { ArrowRightLeft, CreditCard, Goal, LayoutGrid, Settings, Tags } from "lucide-react";
 import finestLogo from "/finest-logo.png";
+import { useAuth } from "../../context/AuthContext";
 
 const NAV_ITEMS = [
   { key: "panoramica", label: "Panoramica", icon: LayoutGrid },
@@ -7,9 +8,15 @@ const NAV_ITEMS = [
   { key: "abbonamenti", label: "Abbonamenti", icon: CreditCard },
   { key: "categorie", label: "Categorie", icon: Tags },
   { key: "obiettivi", label: "Obiettivi", icon: Goal },
+  { key: "impostazioni", label: "Impostazioni", icon: Settings },
 ];
 
 export default function Sidebar({ isCollapsed, currentPage, onNavigate }) {
+  const { user, profile } = useAuth();
+  const displayName = profile ? `${profile.name} ${profile.lastName}` : user?.email ?? "";
+  const initials = profile
+    ? `${profile.name?.[0] ?? ""}${profile.lastName?.[0] ?? ""}`.toUpperCase()
+    : (user?.email?.[0] ?? "?").toUpperCase();
   let sidebarClasses =
     "px-3 py-7 bg-(--light-bg-bar) dark:bg-(--dark-bg-bar) fixed top-0 left-0 h-screen z-40 border-r border-(--light-border-color) dark:border-(--dark-border-color) duration-300 hidden md:block";
   sidebarClasses += isCollapsed ? " w-20" : " w-64";
@@ -54,15 +61,18 @@ export default function Sidebar({ isCollapsed, currentPage, onNavigate }) {
             isCollapsed ? "justify-center" : ""
           }`}
         >
-          <div className="size-9 rounded-full bg-(--third-color) flex items-center justify-center text-white text-base font-semibold shrink-0">
-            FS
+          <div className="size-9 rounded-full bg-(--third-color) flex items-center justify-center text-white text-base font-semibold shrink-0 overflow-hidden">
+            {profile?.profileImage
+              ? <img src={profile.profileImage} alt="avatar" className="w-full h-full object-cover" />
+              : initials
+            }
           </div>
           {!isCollapsed && (
             <div className="overflow-hidden">
               <p className="text-sm font-medium text-(--dark-main-color) dark:text-(--light-color) truncate">
-                Francesco Spinella
+                {displayName}
               </p>
-              <p className="text-xs text-(--dark-third-color) truncate">Account locale</p>
+              <p className="text-xs text-(--dark-third-color) truncate">{user?.email}</p>
             </div>
           )}
         </div>

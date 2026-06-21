@@ -7,7 +7,10 @@ import Transactions from "./components/pages/Transactions/Transactions";
 import Categories from "./components/pages/Categories/Categories";
 import Goals from "./components/pages/Goals/Goals";
 import Subscriptions from "./components/pages/Subscriptions/Subscriptions";
+import Settings from "./components/pages/Settings/Settings";
 import { useData } from "./context/DataContext";
+import { useAuth } from "./context/AuthContext";
+import AuthScreen from "./components/auth/AuthScreen";
 
 const PAGES = {
   panoramica: Overview,
@@ -15,6 +18,7 @@ const PAGES = {
   categorie: Categories,
   obiettivi: Goals,
   abbonamenti: Subscriptions,
+  impostazioni: Settings,
 };
 
 function useUpdater() {
@@ -36,19 +40,22 @@ function useUpdater() {
 }
 
 export default function App() {
+  const { user, loading: authLoading } = useAuth();
   const { loading } = useData();
   const [currentPage, setCurrentPage] = useState("panoramica");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { updateStatus, progress } = useUpdater();
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-(--light-bg-main-color) dark:bg-(--dark-bg-dashboard)">
         <p className="text-(--dark-third-color) text-sm">Caricamento...</p>
       </div>
     );
   }
+
+  if (!user) return <AuthScreen />;
 
   const PageComponent = PAGES[currentPage];
 
