@@ -22,6 +22,8 @@ contextBridge.exposeInMainWorld("api", {
 
   setTitleBarOverlay: (isDark) => ipcRenderer.invoke("ui:setTitleBarOverlay", isDark),
 
+  getUpdateStatus: () => ipcRenderer.invoke("updater:getStatus"),
+  checkForUpdates: () => ipcRenderer.invoke("updater:checkNow"),
   onUpdateAvailable: (cb) => ipcRenderer.on("updater:update-available", cb),
   onDownloadProgress: (cb) => ipcRenderer.on("updater:download-progress", (_e, pct) => cb(pct)),
   onUpdateReady: (cb) => ipcRenderer.on("updater:update-ready", cb),

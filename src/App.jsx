@@ -23,9 +23,13 @@ function useUpdater() {
 
   useEffect(() => {
     if (!window.api) return;
-    window.api.onUpdateAvailable(() => setUpdateStatus("available"));
-    window.api.onDownloadProgress((pct) => { setUpdateStatus("downloading"); setProgress(pct); });
-    window.api.onUpdateReady(() => setUpdateStatus("ready"));
+    window.api.getUpdateStatus().then(s => {
+      console.log("[updater] status on mount:", s);
+      if (s === "ready") setUpdateStatus("ready");
+    });
+    window.api.onUpdateAvailable(() => { console.log("[updater] update available"); setUpdateStatus("available"); });
+    window.api.onDownloadProgress((pct) => { console.log("[updater] progress:", pct); setUpdateStatus("downloading"); setProgress(pct); });
+    window.api.onUpdateReady(() => { console.log("[updater] ready"); setUpdateStatus("ready"); });
   }, []);
 
   return { updateStatus, progress };

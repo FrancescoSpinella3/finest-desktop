@@ -1,6 +1,6 @@
 {
   "name": "finest-desktop",
-  "version": "1.0.1",
+  "version": "1.0.7",
   "private": true,
   "description": "Finest - Applicazione desktop per la gestione finanziaria personale",
   "main": "electron/main.cjs",
@@ -15,6 +15,7 @@
     "release": "npm run clean && npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --publish always"
   },
   "dependencies": {
+    "electron-log": "^5.4.4",
     "electron-updater": "^6.8.9",
     "lucide-react": "^0.563.0",
     "react": "^19.2.0",
@@ -45,8 +46,9 @@
     },
     "publish": {
       "provider": "github",
-      "owner": "TUA_USERNAME_GITHUB",
-      "repo": "finest-desktop"
+      "owner": "FrancescoSpinella3",
+      "repo": "finest-desktop",
+      "releaseType": "release"
     },
     "win": {
       "target": "nsis",
