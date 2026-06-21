@@ -1,4 +1,4 @@
-import { ArrowRightLeft, CreditCard, Goal, LayoutGrid, Tags, X } from "lucide-react";
+import { ArrowRightLeft, CreditCard, Goal, LayoutGrid, Settings, Tags, X } from "lucide-react";
 import finestLogo from "/finest-logo.png";
 
 const NAV_ITEMS = [
@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { key: "abbonamenti", label: "Abbonamenti", icon: CreditCard },
   { key: "categorie", label: "Categorie", icon: Tags },
   { key: "obiettivi", label: "Obiettivi", icon: Goal },
+  { key: "impostazioni", label: "Impostazioni", icon: Settings },
 ];
 
 export default function MobileSidebar({ isOpen, onClose, currentPage, onNavigate }) {

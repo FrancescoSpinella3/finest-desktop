@@ -1,172 +1,210 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { supabase } from "../lib/supabase";
+import { useAuth } from "./AuthContext";
 import { isSameMonth } from "../util/dateUtils";
 
 const DataContext = createContext(null);
-
-/* ------------------------------------------------------------------ */
-/* Fallback in-browser API (used only when running `npm run dev`      */
-/* outside Electron, e.g. for quick UI iteration in a normal browser) */
-/* ------------------------------------------------------------------ */
-
-const FALLBACK_KEY = "finest-fallback-db";
-
-function uid() {
-  return Math.random().toString(36).slice(2) + Date.now().toString(36);
-}
-
-function defaultData() {
-  return {
-    categories: [
-      { id: uid(), name: "Stipendio", type: "income", icon: "briefcase" },
-      { id: uid(), name: "Regali", type: "income", icon: "gift" },
-      { id: uid(), name: "Alimentari", type: "expense", icon: "shopping-cart" },
-      { id: uid(), name: "Utenze", type: "expense", icon: "zap" },
-      { id: uid(), name: "Trasporti", type: "expense", icon: "car" },
-      { id: uid(), name: "Svago", type: "expense", icon: "film" },
-      { id: uid(), name: "Fondo emergenza", type: "saving", icon: "piggy-bank" },
-    ],
-    transactions: [],
-    goals: [],
-    subscriptions: [],
-  };
-}
-
-function createFallbackApi() {
-  function read() {
-    const raw = localStorage.getItem(FALLBACK_KEY);
-    if (!raw) {
-      const data = defaultData();
-      localStorage.setItem(FALLBACK_KEY, JSON.stringify(data));
-      return data;
-    }
-    return JSON.parse(raw);
-  }
-  function write(db) {
-    localStorage.setItem(FALLBACK_KEY, JSON.stringify(db));
-    return db;
-  }
-
-  return {
-    getAll: async () => read(),
-    addCategory: async (category) => {
-      const db = read();
-      db.categories.push({ id: uid(), ...category });
-      return write(db);
-    },
-    updateCategory: async (id, patch) => {
-      const db = read();
-      db.categories = db.categories.map((c) => (c.id === id ? { ...c, ...patch } : c));
-      return write(db);
-    },
-    deleteCategory: async (id) => {
-      const db = read();
-      db.categories = db.categories.filter((c) => c.id !== id);
-      return write(db);
-    },
-    addTransaction: async (tx) => {
-      const db = read();
-      db.transactions.push({ id: uid(), ...tx });
-      return write(db);
-    },
-    updateTransaction: async (id, patch) => {
-      const db = read();
-      db.transactions = db.transactions.map((t) => (t.id === id ? { ...t, ...patch } : t));
-      return write(db);
-    },
-    deleteTransaction: async (id) => {
-      const db = read();
-      db.transactions = db.transactions.filter((t) => t.id !== id);
-      return write(db);
-    },
-    addGoal: async (goal) => {
-      const db = read();
-      db.goals.push({ id: uid(), manualAmount: 0, ...goal });
-      return write(db);
-    },
-    updateGoal: async (id, patch) => {
-      const db = read();
-      db.goals = db.goals.map((g) => (g.id === id ? { ...g, ...patch } : g));
-      return write(db);
-    },
-    deleteGoal: async (id) => {
-      const db = read();
-      db.goals = db.goals.filter((g) => g.id !== id);
-      return write(db);
-    },
-    contributeGoal: async (id, amount) => {
-      const db = read();
-      db.goals = db.goals.map((g) =>
-        g.id === id ? { ...g, manualAmount: (g.manualAmount || 0) + amount } : g
-      );
-      return write(db);
-    },
-    addSubscription: async (sub) => {
-      const db = read();
-      db.subscriptions = db.subscriptions || [];
-      db.subscriptions.push({ id: uid(), ...sub });
-      return write(db);
-    },
-    updateSubscription: async (id, patch) => {
-      const db = read();
-      db.subscriptions = (db.subscriptions || []).map((s) => (s.id === id ? { ...s, ...patch } : s));
-      return write(db);
-    },
-    deleteSubscription: async (id) => {
-      const db = read();
-      db.subscriptions = (db.subscriptions || []).filter((s) => s.id !== id);
-      return write(db);
-    },
-  };
-}
-
-const api = window.api || createFallbackApi();
 export const isDesktop = !!window.api;
 
-/* ------------------------------------------------------------------ */
+const DEFAULT_CATEGORIES = [
+  { name: "Stipendio", type: "income", icon: "briefcase" },
+  { name: "Regali", type: "income", icon: "gift" },
+  { name: "Altre entrate", type: "income", icon: "plus-circle" },
+  { name: "Alimentari", type: "expense", icon: "shopping-cart" },
+  { name: "Utenze", type: "expense", icon: "zap" },
+  { name: "Trasporti", type: "expense", icon: "car" },
+  { name: "Svago", type: "expense", icon: "film" },
+  { name: "Casa", type: "expense", icon: "home" },
+  { name: "Salute", type: "expense", icon: "heart-pulse" },
+  { name: "Fondo emergenza", type: "saving", icon: "piggy-bank" },
+];
+
+function strip(row) {
+  const { userId, ...rest } = row;
+  return rest;
+}
+
+/* ── Auto-renewal logic (portata da store.cjs) ─────────────────────── */
+
+function clampDay(year, month, day) {
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  return new Date(year, month, Math.min(day, lastDay));
+}
+
+function nextRenewalAfter(day, afterDate) {
+  const after = new Date(afterDate);
+  after.setHours(0, 0, 0, 0);
+  const sameMonth = clampDay(after.getFullYear(), after.getMonth(), day);
+  if (sameMonth > after) return sameMonth;
+  const nm = after.getMonth() + 1;
+  return clampDay(nm > 11 ? after.getFullYear() + 1 : after.getFullYear(), nm % 12, day);
+}
+
+async function processRenewals(subs, uid) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const newTxs = [];
+  const subUpdates = [];
+
+  for (const sub of subs) {
+    if (!sub.cost || !sub.categoryId || !sub.lastRenewal) continue;
+    const startDate = sub.lastAutoRenewal || sub.lastRenewal;
+    let checkFrom = new Date(startDate);
+    checkFrom.setHours(0, 0, 0, 0);
+    let lastAutoRenewal = sub.lastAutoRenewal;
+
+    while (true) {
+      const next = nextRenewalAfter(sub.expiryDay, checkFrom);
+      if (next > today) break;
+      const dateStr = next.toISOString().split("T")[0];
+      newTxs.push({
+        userId: uid, type: "expense", description: sub.name,
+        amount: sub.cost, categoryId: sub.categoryId,
+        date: dateStr, autoRenewal: true,
+      });
+      lastAutoRenewal = dateStr;
+      checkFrom = next;
+    }
+
+    if (lastAutoRenewal !== sub.lastAutoRenewal) {
+      subUpdates.push({ id: sub.id, lastAutoRenewal });
+    }
+  }
+
+  let inserted = [];
+  if (newTxs.length > 0) {
+    const { data } = await supabase.from("transactions").insert(newTxs).select();
+    inserted = (data || []).map(strip);
+  }
+  for (const { id, lastAutoRenewal } of subUpdates) {
+    await supabase.from("subscriptions").update({ lastAutoRenewal }).eq("id", id);
+  }
+  return inserted;
+}
+
+/* ── Provider ───────────────────────────────────────────────────────── */
 
 export function DataProvider({ children }) {
+  const { user } = useAuth();
+  const uid = user?.id;
+
   const [categories, setCategories] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [goals, setGoals] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const applyDb = (db) => {
-    setCategories(db.categories || []);
-    setTransactions(db.transactions || []);
-    setGoals(db.goals || []);
-    setSubscriptions(db.subscriptions || []);
-  };
-
   useEffect(() => {
-    api.getAll().then((db) => {
-      applyDb(db);
+    if (!uid) { setLoading(false); return; }
+    setLoading(true);
+
+    (async () => {
+      const [cats, txs, goalsRes, subs] = await Promise.all([
+        supabase.from("categories").select("*"),
+        supabase.from("transactions").select("*").order("date", { ascending: false }),
+        supabase.from("goals").select("*"),
+        supabase.from("subscriptions").select("*"),
+      ]);
+
+      let catsData = (cats.data || []).map(strip);
+      if (catsData.length === 0) {
+        const { data: inserted } = await supabase
+          .from("categories")
+          .insert(DEFAULT_CATEGORIES.map((c) => ({ ...c, userId: uid })))
+          .select();
+        catsData = (inserted || []).map(strip);
+      }
+
+      const subsData = (subs.data || []).map(strip);
+      const renewedTxs = await processRenewals(subsData, uid);
+      const allTxs = [...(txs.data || []).map(strip), ...renewedTxs]
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      setCategories(catsData);
+      setTransactions(allTxs);
+      setGoals((goalsRes.data || []).map(strip));
+      setSubscriptions(subsData);
       setLoading(false);
-    });
+    })();
+  }, [uid]);
+
+  /* ── Categories ─────────────────────────────────────────────────── */
+
+  const addCategory = useCallback(async (category) => {
+    const { data } = await supabase.from("categories").insert({ ...category, userId: uid }).select().single();
+    if (data) setCategories((prev) => [...prev, strip(data)]);
+  }, [uid]);
+
+  const updateCategory = useCallback(async (id, patch) => {
+    const { data } = await supabase.from("categories").update(patch).eq("id", id).select().single();
+    if (data) setCategories((prev) => prev.map((c) => (c.id === id ? strip(data) : c)));
   }, []);
 
-  /* --------------------------- Categories --------------------------- */
-  const addCategory = useCallback((category) => api.addCategory(category).then(applyDb), []);
-  const updateCategory = useCallback((id, patch) => api.updateCategory(id, patch).then(applyDb), []);
-  const deleteCategory = useCallback((id) => api.deleteCategory(id).then(applyDb), []);
+  const deleteCategory = useCallback(async (id) => {
+    await supabase.from("categories").delete().eq("id", id);
+    setCategories((prev) => prev.filter((c) => c.id !== id));
+  }, []);
 
-  /* -------------------------- Transactions --------------------------- */
-  const addTransaction = useCallback((tx) => api.addTransaction(tx).then(applyDb), []);
-  const updateTransaction = useCallback((id, patch) => api.updateTransaction(id, patch).then(applyDb), []);
-  const deleteTransaction = useCallback((id) => api.deleteTransaction(id).then(applyDb), []);
+  /* ── Transactions ───────────────────────────────────────────────── */
 
-  /* ------------------------------ Goals ------------------------------ */
-  const addGoal = useCallback((goal) => api.addGoal(goal).then(applyDb), []);
-  const updateGoal = useCallback((id, patch) => api.updateGoal(id, patch).then(applyDb), []);
-  const deleteGoal = useCallback((id) => api.deleteGoal(id).then(applyDb), []);
-  const contributeGoal = useCallback((id, amount) => api.contributeGoal(id, amount).then(applyDb), []);
+  const addTransaction = useCallback(async (tx) => {
+    const { data } = await supabase.from("transactions").insert({ ...tx, userId: uid }).select().single();
+    if (data) setTransactions((prev) => [strip(data), ...prev]);
+  }, [uid]);
 
-  /* -------------------------- Subscriptions -------------------------- */
-  const addSubscription = useCallback((sub) => api.addSubscription(sub).then(applyDb), []);
-  const updateSubscription = useCallback((id, patch) => api.updateSubscription(id, patch).then(applyDb), []);
-  const deleteSubscription = useCallback((id) => api.deleteSubscription(id).then(applyDb), []);
+  const updateTransaction = useCallback(async (id, patch) => {
+    const { data } = await supabase.from("transactions").update(patch).eq("id", id).select().single();
+    if (data) setTransactions((prev) => prev.map((t) => (t.id === id ? strip(data) : t)));
+  }, []);
 
-  /* --------------------------- Derived data --------------------------- */
+  const deleteTransaction = useCallback(async (id) => {
+    await supabase.from("transactions").delete().eq("id", id);
+    setTransactions((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  /* ── Goals ──────────────────────────────────────────────────────── */
+
+  const addGoal = useCallback(async (goal) => {
+    const { data } = await supabase.from("goals").insert({ ...goal, manualAmount: 0, userId: uid }).select().single();
+    if (data) setGoals((prev) => [...prev, strip(data)]);
+  }, [uid]);
+
+  const updateGoal = useCallback(async (id, patch) => {
+    const { data } = await supabase.from("goals").update(patch).eq("id", id).select().single();
+    if (data) setGoals((prev) => prev.map((g) => (g.id === id ? strip(data) : g)));
+  }, []);
+
+  const deleteGoal = useCallback(async (id) => {
+    await supabase.from("goals").delete().eq("id", id);
+    setGoals((prev) => prev.filter((g) => g.id !== id));
+  }, []);
+
+  const contributeGoal = useCallback(async (id, amount) => {
+    const goal = goals.find((g) => g.id === id);
+    if (!goal) return;
+    const newAmount = (goal.manualAmount || 0) + amount;
+    const { data } = await supabase.from("goals").update({ manualAmount: newAmount }).eq("id", id).select().single();
+    if (data) setGoals((prev) => prev.map((g) => (g.id === id ? strip(data) : g)));
+  }, [goals]);
+
+  /* ── Subscriptions ──────────────────────────────────────────────── */
+
+  const addSubscription = useCallback(async (sub) => {
+    const { data } = await supabase.from("subscriptions").insert({ ...sub, userId: uid }).select().single();
+    if (data) setSubscriptions((prev) => [...prev, strip(data)]);
+  }, [uid]);
+
+  const updateSubscription = useCallback(async (id, patch) => {
+    const { data } = await supabase.from("subscriptions").update(patch).eq("id", id).select().single();
+    if (data) setSubscriptions((prev) => prev.map((s) => (s.id === id ? strip(data) : s)));
+  }, []);
+
+  const deleteSubscription = useCallback(async (id) => {
+    await supabase.from("subscriptions").delete().eq("id", id);
+    setSubscriptions((prev) => prev.filter((s) => s.id !== id));
+  }, []);
+
+  /* ── Derived ────────────────────────────────────────────────────── */
 
   const getCategoryById = useCallback(
     (id) => categories.find((c) => c.id === id) || null,
@@ -174,26 +212,17 @@ export function DataProvider({ children }) {
   );
 
   const totals = useMemo(() => {
-    let income = 0;
-    let expense = 0;
-    let saving = 0;
+    let income = 0, expense = 0, saving = 0;
     transactions.forEach((t) => {
       if (t.type === "income") income += t.amount;
       else if (t.type === "expense") expense += t.amount;
       else if (t.type === "saving") saving += t.amount;
     });
-    return {
-      income,
-      expense,
-      saving,
-      netWorth: income - expense + saving,
-    };
+    return { income, expense, saving, netWorth: income - expense + saving };
   }, [transactions]);
 
   const monthTotals = useMemo(() => {
-    let income = 0;
-    let expense = 0;
-    let saving = 0;
+    let income = 0, expense = 0, saving = 0;
     transactions.filter((t) => isSameMonth(t.date)).forEach((t) => {
       if (t.type === "income") income += t.amount;
       else if (t.type === "expense") expense += t.amount;
@@ -207,8 +236,7 @@ export function DataProvider({ children }) {
       if (goal.categoryId) {
         let filtered = transactions.filter((t) => t.categoryId === goal.categoryId);
         if (goal.period === "mensile") filtered = filtered.filter((t) => isSameMonth(t.date));
-        const sum = filtered.reduce((acc, t) => acc + t.amount, 0);
-        return sum;
+        return filtered.reduce((acc, t) => acc + t.amount, 0);
       }
       return goal.manualAmount || 0;
     },
@@ -222,19 +250,10 @@ export function DataProvider({ children }) {
     transactions,
     goals,
     subscriptions,
-    addCategory,
-    updateCategory,
-    deleteCategory,
-    addTransaction,
-    updateTransaction,
-    deleteTransaction,
-    addGoal,
-    updateGoal,
-    deleteGoal,
-    contributeGoal,
-    addSubscription,
-    updateSubscription,
-    deleteSubscription,
+    addCategory, updateCategory, deleteCategory,
+    addTransaction, updateTransaction, deleteTransaction,
+    addGoal, updateGoal, deleteGoal, contributeGoal,
+    addSubscription, updateSubscription, deleteSubscription,
     getCategoryById,
     totals,
     monthTotals,
