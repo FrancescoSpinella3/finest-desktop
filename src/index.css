@@ -1,0 +1,79 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+    --breakpoint-xl: 1200px;
+}
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root {
+    --main-color: #1055C9;
+    --hover-main-color: #05339C;
+    --second-color: #2872ee;
+    --third-color: #6197f2;
+    --fourth-color: #052c85;
+
+    --dark-main-color: #171717;
+    --dark-second-color: #555555;
+    --dark-third-color: #939393;
+    --dark-fourth-color: #D1D1D1;
+
+    --light-color: #F0F0F0;
+
+    --danger-color: #EF3463;
+    --danger-hover-color: #BA2B4E;
+    --success-color: #1c9e5e;
+    --warning-color: #d8552e;
+
+    /* Light mode config */
+    --light-bg-main-color: #fbfaf7;
+    --light-bg-color: #F0F0F0;
+    --light-bg-dashboard: #e5e7eb;
+    --light-bg-bar: #fff;
+    --light-border-color: #e1e1df;
+    --light-bg-input: #f9fafb;
+    --light-bg-container: #ffffff;
+    --light-bg-category-card: #ffffff;
+    --light-bg-table-head: #f6f4eb;
+    --light-bg-modal: #ffffff;
+
+    /* Dark mode config */
+    --dark-bg-color: #0f111a;
+    --dark-bg-bar: #141824;
+    --dark-bg-dashboard: #0f111a;
+    --dark-border-color: #333547;
+    --dark-bg-container: #151821;
+    --dark-bg-category-card: #171b24;
+    --dark-bg-input: #1c1e2e;
+    --dark-bg-table-head: #131622;
+    --dark-bg-modal: #1b1c24;
+}
+
+html, body, #root {
+    height: 100%;
+}
+
+html {
+    font-family: "Poppins", sans-serif;
+}
+
+h1, h2, h3, h4 {
+    font-family: "Montserrat", sans-serif;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--light-border-color);
+    border-radius: 8px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+    background: var(--dark-border-color);
+}
