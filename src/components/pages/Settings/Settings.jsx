@@ -126,8 +126,8 @@ function ProfileCard({ user, profile, onRefresh }) {
     setUploading(true);
     const ext = file.name.split(".").pop();
     const path = `${user.id}/avatar.${ext}`;
-    const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
-    if (error) { setUploadError("Errore durante il caricamento."); setUploading(false); return; }
+    const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true, contentType: file.type });
+    if (error) { console.error("Upload error:", error); setUploadError("Errore durante il caricamento."); setUploading(false); return; }
     const { data } = supabase.storage.from("avatars").getPublicUrl(path);
     await supabase.from("profiles").update({ profileImage: `${data.publicUrl}?t=${Date.now()}` }).eq("id", user.id);
     await onRefresh();

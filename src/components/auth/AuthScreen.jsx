@@ -142,7 +142,6 @@ export default function AuthScreen() {
                   <option value="">Seleziona un'opzione</option>
                   <option value="Maschio">Maschio</option>
                   <option value="Femmina">Femmina</option>
-                  <option value="Non binario">Non binario</option>
                   <option value="Preferisco non specificare">Preferisco non specificare</option>
                 </Select>
               </div>
