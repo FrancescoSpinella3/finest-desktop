@@ -70,7 +70,7 @@ export default function SubscriptionModal({ open, onClose, editingSubscription, 
     const payload = {
       name: form.name.trim(),
       expiryDay: parseInt(form.expiryDay, 10),
-      lastRenewal: form.lastRenewal,
+      lastRenewal: form.lastRenewal || null,
       cost: form.cost !== "" ? parseFloat(form.cost) : null,
       logo: form.logo,
       categoryId: form.categoryId || null,
@@ -83,6 +83,9 @@ export default function SubscriptionModal({ open, onClose, editingSubscription, 
     action.then(() => {
       onSaved(editingSubscription ? "Abbonamento aggiornato" : "Abbonamento aggiunto");
       onClose();
+    }).catch((err) => {
+      console.error("SubscriptionModal submit error:", err);
+      setErrors({ submit: "Errore durante il salvataggio. Riprova." });
     });
   }
 
@@ -186,6 +189,7 @@ export default function SubscriptionModal({ open, onClose, editingSubscription, 
           />
         </div>
 
+        {errors.submit && <p className="text-xs text-red-500">{errors.submit}</p>}
         <div className="flex justify-end gap-3 mt-2">
           <Button type="button" variant="secondary" onClick={onClose}>
             Annulla

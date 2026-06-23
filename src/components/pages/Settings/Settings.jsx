@@ -143,7 +143,7 @@ function ProfileCard({ user, profile, onRefresh }) {
         <div className="relative group">
           <div className="size-24 rounded-full bg-(--third-color) flex items-center justify-center overflow-hidden ring-4 ring-(--light-border-color) dark:ring-(--dark-border-color)">
             {profile?.profileImage
-              ? <img src={profile.profileImage} alt="avatar" className="w-full h-full object-cover" />
+              ? <img src={profile.profileImage} alt="avatar" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = "none"; }} />
               : <span className="text-3xl font-bold text-white">{initials}</span>
             }
           </div>

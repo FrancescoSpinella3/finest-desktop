@@ -63,7 +63,7 @@ export default function Sidebar({ isCollapsed, currentPage, onNavigate }) {
         >
           <div className="size-9 rounded-full bg-(--third-color) flex items-center justify-center text-white text-base font-semibold shrink-0 overflow-hidden">
             {profile?.profileImage
-              ? <img src={profile.profileImage} alt="avatar" className="w-full h-full object-cover" />
+              ? <img src={profile.profileImage} alt="avatar" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = "none"; }} />
               : initials
             }
           </div>

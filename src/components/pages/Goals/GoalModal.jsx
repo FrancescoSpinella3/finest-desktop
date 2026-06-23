@@ -66,6 +66,9 @@ export default function GoalModal({ open, onClose, editingGoal, onSaved }) {
     action.then(() => {
       onSaved(editingGoal ? "Obiettivo aggiornato" : "Obiettivo creato");
       onClose();
+    }).catch((err) => {
+      console.error("GoalModal submit error:", err);
+      setErrors({ submit: "Errore durante il salvataggio. Riprova." });
     });
   }
 
@@ -131,6 +134,7 @@ export default function GoalModal({ open, onClose, editingGoal, onSaved }) {
           aggiornarlo manualmente con il pulsante "Aggiungi importo".
         </p>
 
+        {errors.submit && <p className="text-xs text-red-500">{errors.submit}</p>}
         <div className="flex justify-end gap-3 mt-2">
           <Button type="button" variant="secondary" onClick={onClose}>
             Annulla

@@ -165,7 +165,8 @@ export function DataProvider({ children }) {
   /* ── Goals ──────────────────────────────────────────────────────── */
 
   const addGoal = useCallback(async (goal) => {
-    const { data } = await supabase.from("goals").insert({ ...goal, manualAmount: 0, userId: uid }).select().single();
+    const { data, error } = await supabase.from("goals").insert({ ...goal, manualAmount: 0, userId: uid }).select().single();
+    if (error) { console.error("addGoal error:", error); throw error; }
     if (data) setGoals((prev) => [...prev, strip(data)]);
   }, [uid]);
 
@@ -190,7 +191,8 @@ export function DataProvider({ children }) {
   /* ── Subscriptions ──────────────────────────────────────────────── */
 
   const addSubscription = useCallback(async (sub) => {
-    const { data } = await supabase.from("subscriptions").insert({ ...sub, userId: uid }).select().single();
+    const { data, error } = await supabase.from("subscriptions").insert({ ...sub, userId: uid }).select().single();
+    if (error) { console.error("addSubscription error:", error); throw error; }
     if (data) setSubscriptions((prev) => [...prev, strip(data)]);
   }, [uid]);
 
