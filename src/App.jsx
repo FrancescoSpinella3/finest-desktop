@@ -11,6 +11,7 @@ import Settings from "./components/pages/Settings/Settings";
 import { useData } from "./context/DataContext";
 import { useAuth } from "./context/AuthContext";
 import AuthScreen from "./components/auth/AuthScreen";
+import Spinner from "./components/ui/Spinner";
 
 const PAGES = {
   panoramica: Overview,
@@ -50,7 +51,7 @@ export default function App() {
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-(--light-bg-main-color) dark:bg-(--dark-bg-dashboard)">
-        <p className="text-(--dark-third-color) text-sm">Caricamento...</p>
+        <Spinner className="size-9 text-(--dark-third-color)" />
       </div>
     );
   }

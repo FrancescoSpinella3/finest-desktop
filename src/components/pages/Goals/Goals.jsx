@@ -29,7 +29,7 @@ export default function Goals() {
   }
 
   function handleDelete() {
-    deleteGoal(deletingId).then(() => showToast("Obiettivo eliminato"));
+    return deleteGoal(deletingId).then(() => showToast("Obiettivo eliminato"));
   }
 
   return (

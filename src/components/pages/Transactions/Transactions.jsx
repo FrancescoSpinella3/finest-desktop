@@ -57,7 +57,7 @@ export default function Transactions() {
   }
 
   function handleDelete() {
-    deleteTransaction(deletingId).then(() => showToast("Transazione eliminata"));
+    return deleteTransaction(deletingId).then(() => showToast("Transazione eliminata"));
   }
 
   return (

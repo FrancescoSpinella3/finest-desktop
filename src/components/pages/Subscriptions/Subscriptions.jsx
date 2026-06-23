@@ -28,7 +28,7 @@ export default function Subscriptions() {
   }
 
   function handleDelete() {
-    deleteSubscription(deletingId).then(() => showToast("Abbonamento eliminato"));
+    return deleteSubscription(deletingId).then(() => showToast("Abbonamento eliminato"));
   }
 
   const totalMonthlyCost = subscriptions.reduce((s, sub) => s + (sub.cost ?? 0), 0);

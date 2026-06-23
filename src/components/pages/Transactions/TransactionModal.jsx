@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Modal from "../../ui/Modal";
 import { Input, Select } from "../../ui/Input";
 import Button from "../../ui/Button";
+import Spinner from "../../ui/Spinner";
 import { useData } from "../../../context/DataContext";
 import { todayISO } from "../../../util/dateUtils";
 
@@ -11,6 +12,8 @@ export default function TransactionModal({ open, onClose, editingTransaction, on
   const { categories, addTransaction, updateTransaction } = useData();
 
   const [form, setForm] = useState(emptyForm());
+  const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
   function emptyForm() {
     return { description: "", amount: "", type: "expense", categoryId: "", date: todayISO() };
@@ -29,8 +32,6 @@ export default function TransactionModal({ open, onClose, editingTransaction, on
       setForm(emptyForm());
     }
   }, [editingTransaction, open]);
-
-  const [errors, setErrors] = useState({});
 
   const filteredCategories = categories.filter((c) => c.type === form.type);
 
@@ -61,10 +62,11 @@ export default function TransactionModal({ open, onClose, editingTransaction, on
       ? updateTransaction(editingTransaction.id, payload)
       : addTransaction(payload);
 
+    setSubmitting(true);
     action.then(() => {
       onSaved(editingTransaction ? "Transazione aggiornata" : "Transazione aggiunta");
       onClose();
-    });
+    }).finally(() => setSubmitting(false));
   }
 
   return (
@@ -72,7 +74,7 @@ export default function TransactionModal({ open, onClose, editingTransaction, on
       title={editingTransaction ? "Modifica transazione" : "Nuova transazione"}
       subText="Inserisci i dettagli della transazione"
       open={open}
-      onClose={onClose}
+      onClose={submitting ? () => {} : onClose}
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="grid grid-cols-3 gap-2">
@@ -134,10 +136,12 @@ export default function TransactionModal({ open, onClose, editingTransaction, on
         </Select>
 
         <div className="flex justify-end gap-3 mt-2">
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={onClose} disabled={submitting}>
             Annulla
           </Button>
-          <Button type="submit">{editingTransaction ? "Salva modifiche" : "Aggiungi"}</Button>
+          <Button type="submit" disabled={submitting}>
+            {submitting ? <Spinner /> : editingTransaction ? "Salva modifiche" : "Aggiungi"}
+          </Button>
         </div>
       </form>
     </Modal>

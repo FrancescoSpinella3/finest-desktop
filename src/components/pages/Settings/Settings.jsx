@@ -4,6 +4,7 @@ import { useAuth } from "../../../context/AuthContext";
 import { supabase } from "../../../lib/supabase";
 import Button from "../../ui/Button";
 import { Input } from "../../ui/Input";
+import Spinner from "../../ui/Spinner";
 
 /* ── shared ───────────────────────────────────────────────────────────*/
 
@@ -83,7 +84,7 @@ function DeleteAccountModal({ onClose, onConfirm, deleting, error }) {
             disabled={deleting}
             className="w-full bg-(--danger-color) hover:bg-(--danger-hover-color) disabled:opacity-60 text-white text-sm font-semibold py-2.5 rounded-xl cursor-pointer disabled:cursor-not-allowed transition-colors duration-150"
           >
-            {deleting ? "Eliminazione in corso..." : "Elimina definitivamente"}
+            {deleting ? <><Spinner />Eliminazione in corso...</> : "Elimina definitivamente"}
           </button>
           <button
             onClick={onClose}
@@ -162,7 +163,7 @@ function ProfileCard({ user, profile, onRefresh }) {
           <p className="text-xs text-(--dark-third-color) mt-0.5">{user?.email}</p>
         </div>
         <Button variant="secondary" onClick={() => fileRef.current?.click()} disabled={uploading} className="text-xs px-3 py-1.5">
-          {uploading ? "Caricamento..." : "Cambia foto"}
+          {uploading ? <><Spinner />Caricamento...</> : "Cambia foto"}
         </Button>
         {uploadError && <p className="text-xs text-(--danger-color)">{uploadError}</p>}
       </div>
@@ -238,7 +239,7 @@ function SecurityCard({ onDeleteClick }) {
         {error && <p className="text-sm text-(--danger-color)">{error}</p>}
         <div className="pt-3 border-t border-(--light-border-color) dark:border-(--dark-border-color) flex items-center gap-4">
           <Button type="submit" disabled={saving || !form.password || !form.confirm}>
-            {saving ? "Salvataggio..." : "Cambia password"}
+            {saving ? <><Spinner />Salvataggio...</> : "Cambia password"}
           </Button>
           {success && <p className="text-sm text-(--success-color) font-medium">Password aggiornata.</p>}
         </div>

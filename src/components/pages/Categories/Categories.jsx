@@ -33,7 +33,7 @@ export default function Categories() {
   }
 
   function handleDelete() {
-    deleteCategory(deletingId).then(() => showToast("Categoria eliminata"));
+    return deleteCategory(deletingId).then(() => showToast("Categoria eliminata"));
   }
 
   return (

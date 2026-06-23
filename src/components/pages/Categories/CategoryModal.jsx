@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Modal from "../../ui/Modal";
 import { Input, Select } from "../../ui/Input";
 import Button from "../../ui/Button";
+import Spinner from "../../ui/Spinner";
 import { useData } from "../../../context/DataContext";
 import { ICON_KEYS, CategoryIcon } from "../../../util/icons.jsx";
 
@@ -12,6 +13,7 @@ export default function CategoryModal({ open, onClose, editingCategory, onSaved 
 
   const [form, setForm] = useState({ name: "", type: "expense", icon: ICON_KEYS[0] });
   const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (editingCategory) {
@@ -33,10 +35,11 @@ export default function CategoryModal({ open, onClose, editingCategory, onSaved 
       ? updateCategory(editingCategory.id, form)
       : addCategory(form);
 
+    setSubmitting(true);
     action.then(() => {
       onSaved(editingCategory ? "Categoria aggiornata" : "Categoria aggiunta");
       onClose();
-    });
+    }).finally(() => setSubmitting(false));
   }
 
   return (
@@ -44,7 +47,7 @@ export default function CategoryModal({ open, onClose, editingCategory, onSaved 
       title={editingCategory ? "Modifica categoria" : "Nuova categoria"}
       subText="Inserisci nome, tipo e icona della categoria"
       open={open}
-      onClose={onClose}
+      onClose={submitting ? () => {} : onClose}
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <Input
@@ -86,10 +89,12 @@ export default function CategoryModal({ open, onClose, editingCategory, onSaved 
         </div>
 
         <div className="flex justify-end gap-3 mt-2">
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={onClose} disabled={submitting}>
             Annulla
           </Button>
-          <Button type="submit">{editingCategory ? "Salva modifiche" : "Aggiungi"}</Button>
+          <Button type="submit" disabled={submitting}>
+            {submitting ? <Spinner /> : editingCategory ? "Salva modifiche" : "Aggiungi"}
+          </Button>
         </div>
       </form>
     </Modal>

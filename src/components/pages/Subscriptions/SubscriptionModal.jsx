@@ -3,6 +3,7 @@ import { ImagePlus, X } from "lucide-react";
 import Modal from "../../ui/Modal";
 import { Input, Select } from "../../ui/Input";
 import Button from "../../ui/Button";
+import Spinner from "../../ui/Spinner";
 import { useData } from "../../../context/DataContext";
 
 function emptyForm() {
@@ -16,6 +17,7 @@ export default function SubscriptionModal({ open, onClose, editingSubscription, 
 
   const [form, setForm] = useState(emptyForm());
   const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (editingSubscription) {
@@ -80,10 +82,11 @@ export default function SubscriptionModal({ open, onClose, editingSubscription, 
       ? updateSubscription(editingSubscription.id, payload)
       : addSubscription(payload);
 
+    setSubmitting(true);
     action.then(() => {
       onSaved(editingSubscription ? "Abbonamento aggiornato" : "Abbonamento aggiunto");
       onClose();
-    });
+    }).finally(() => setSubmitting(false));
   }
 
   return (
@@ -91,7 +94,7 @@ export default function SubscriptionModal({ open, onClose, editingSubscription, 
       title={editingSubscription ? "Modifica abbonamento" : "Nuovo abbonamento"}
       subText="Registra un abbonamento con la sua data di scadenza e ultimo rinnovo"
       open={open}
-      onClose={onClose}
+      onClose={submitting ? () => {} : onClose}
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
 
@@ -187,11 +190,11 @@ export default function SubscriptionModal({ open, onClose, editingSubscription, 
         </div>
 
         <div className="flex justify-end gap-3 mt-2">
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={onClose} disabled={submitting}>
             Annulla
           </Button>
-          <Button type="submit">
-            {editingSubscription ? "Salva modifiche" : "Aggiungi abbonamento"}
+          <Button type="submit" disabled={submitting}>
+            {submitting ? <Spinner /> : editingSubscription ? "Salva modifiche" : "Aggiungi abbonamento"}
           </Button>
         </div>
       </form>
