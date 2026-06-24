@@ -94,6 +94,12 @@ export default function App() {
               <>
                 <p className="text-sm flex-1">Aggiornamento pronto.</p>
                 <button
+                  onClick={() => setUpdateStatus(null)}
+                  className="text-sm text-white/60 hover:text-white/90 cursor-pointer shrink-0"
+                >
+                  Più tardi
+                </button>
+                <button
                   onClick={() => window.api.quitAndInstall()}
                   className="text-sm font-semibold bg-(--main-color) hover:opacity-90 px-3 py-1.5 rounded-lg cursor-pointer shrink-0"
                 >

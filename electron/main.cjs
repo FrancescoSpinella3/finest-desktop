@@ -52,7 +52,7 @@ function createWindow() {
 }
 
 autoUpdater.autoDownload = true;
-autoUpdater.autoInstallOnAppQuit = true;
+autoUpdater.autoInstallOnAppQuit = false;
 
 autoUpdater.on("error", (err) => {
   console.error("[updater] error:", err.message);
