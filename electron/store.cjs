@@ -1,4 +1,4 @@
-const { app } = require("electron");
+const { app, safeStorage } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
@@ -35,7 +35,7 @@ function init() {
 
   if (fs.existsSync(dbPath)) {
     try {
-      db = JSON.parse(fs.readFileSync(dbPath, "utf-8"));
+      db = readEncrypted();
     } catch (err) {
       console.error("Errore lettura database, ricreo con dati di default:", err);
       db = defaultData();
@@ -54,7 +54,25 @@ function init() {
 }
 
 function persist() {
-  fs.writeFileSync(dbPath, JSON.stringify(db, null, 2), "utf-8");
+  const json = JSON.stringify(db, null, 2);
+  if (safeStorage.isEncryptionAvailable()) {
+    fs.writeFileSync(dbPath, safeStorage.encryptString(json));
+  } else {
+    fs.writeFileSync(dbPath, json, "utf-8");
+  }
+}
+
+function readEncrypted() {
+  const raw = fs.readFileSync(dbPath);
+  if (safeStorage.isEncryptionAvailable()) {
+    try {
+      return JSON.parse(safeStorage.decryptString(raw));
+    } catch {
+      // Migrazione: il file esiste ma è ancora in chiaro — lo cifriamo al prossimo persist()
+      return JSON.parse(raw.toString("utf-8"));
+    }
+  }
+  return JSON.parse(raw.toString("utf-8"));
 }
 
 function getAll() {
