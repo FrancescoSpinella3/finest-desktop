@@ -2,6 +2,7 @@ const { app } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const v = require("./validate.cjs");
 
 let dbPath = null;
 let db = null;
@@ -63,20 +64,23 @@ function getAll() {
 /* ----------------------------- Categories ----------------------------- */
 
 function addCategory(category) {
-  const newCategory = { id: uid(), ...category };
+  const newCategory = { id: uid(), ...v.category(category) };
   db.categories.push(newCategory);
   persist();
   return db;
 }
 
 function updateCategory(id, patch) {
-  db.categories = db.categories.map((c) => (c.id === id ? { ...c, ...patch } : c));
+  const safeId = v.id(id);
+  const safePatch = v.categoryPatch(patch);
+  db.categories = db.categories.map((c) => (c.id === safeId ? { ...c, ...safePatch } : c));
   persist();
   return db;
 }
 
 function deleteCategory(id) {
-  db.categories = db.categories.filter((c) => c.id !== id);
+  const safeId = v.id(id);
+  db.categories = db.categories.filter((c) => c.id !== safeId);
   // Orphan transactions/goals keep the categoryId; the UI labels them as "Categoria eliminata"
   persist();
   return db;
@@ -85,20 +89,23 @@ function deleteCategory(id) {
 /* ---------------------------- Transactions ----------------------------- */
 
 function addTransaction(tx) {
-  const newTx = { id: uid(), ...tx };
+  const newTx = { id: uid(), ...v.transaction(tx) };
   db.transactions.push(newTx);
   persist();
   return db;
 }
 
 function updateTransaction(id, patch) {
-  db.transactions = db.transactions.map((t) => (t.id === id ? { ...t, ...patch } : t));
+  const safeId = v.id(id);
+  const safePatch = v.transactionPatch(patch);
+  db.transactions = db.transactions.map((t) => (t.id === safeId ? { ...t, ...safePatch } : t));
   persist();
   return db;
 }
 
 function deleteTransaction(id) {
-  db.transactions = db.transactions.filter((t) => t.id !== id);
+  const safeId = v.id(id);
+  db.transactions = db.transactions.filter((t) => t.id !== safeId);
   persist();
   return db;
 }
@@ -106,27 +113,32 @@ function deleteTransaction(id) {
 /* -------------------------------- Goals --------------------------------- */
 
 function addGoal(goal) {
-  const newGoal = { id: uid(), manualAmount: 0, ...goal };
+  const newGoal = { id: uid(), manualAmount: 0, ...v.goal(goal) };
   db.goals.push(newGoal);
   persist();
   return db;
 }
 
 function updateGoal(id, patch) {
-  db.goals = db.goals.map((g) => (g.id === id ? { ...g, ...patch } : g));
+  const safeId = v.id(id);
+  const safePatch = v.goalPatch(patch);
+  db.goals = db.goals.map((g) => (g.id === safeId ? { ...g, ...safePatch } : g));
   persist();
   return db;
 }
 
 function deleteGoal(id) {
-  db.goals = db.goals.filter((g) => g.id !== id);
+  const safeId = v.id(id);
+  db.goals = db.goals.filter((g) => g.id !== safeId);
   persist();
   return db;
 }
 
 function contributeGoal(id, amount) {
+  const safeId = v.id(id);
+  const safeAmount = v.contributeAmount(amount);
   db.goals = db.goals.map((g) =>
-    g.id === id ? { ...g, manualAmount: (g.manualAmount || 0) + amount } : g
+    g.id === safeId ? { ...g, manualAmount: (g.manualAmount || 0) + safeAmount } : g
   );
   persist();
   return db;
@@ -187,20 +199,23 @@ function processRenewals() {
 /* ----------------------------- Subscriptions ---------------------------- */
 
 function addSubscription(sub) {
-  const newSub = { id: uid(), ...sub };
+  const newSub = { id: uid(), ...v.subscription(sub) };
   db.subscriptions.push(newSub);
   persist();
   return db;
 }
 
 function updateSubscription(id, patch) {
-  db.subscriptions = db.subscriptions.map((s) => (s.id === id ? { ...s, ...patch } : s));
+  const safeId = v.id(id);
+  const safePatch = v.subscriptionPatch(patch);
+  db.subscriptions = db.subscriptions.map((s) => (s.id === safeId ? { ...s, ...safePatch } : s));
   persist();
   return db;
 }
 
 function deleteSubscription(id) {
-  db.subscriptions = db.subscriptions.filter((s) => s.id !== id);
+  const safeId = v.id(id);
+  db.subscriptions = db.subscriptions.filter((s) => s.id !== safeId);
   persist();
   return db;
 }

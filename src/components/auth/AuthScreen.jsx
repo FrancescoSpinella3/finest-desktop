@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import Button from "../ui/Button";
 import { Input, Select } from "../ui/Input";
+import Spinner from "../ui/Spinner";
 import finestLogo from "/finest-logo.png";
 
 function EyeToggle({ show, onToggle }) {
@@ -173,7 +174,7 @@ export default function AuthScreen() {
           {error && <p className="text-sm text-(--danger-color) text-center font-medium">{error}</p>}
 
           <Button type="submit" disabled={isDisabled} className="mt-1 w-full py-3 rounded-xl text-base">
-            {loading ? "Caricamento..." : mode === "login" ? "Accedi" : "Registrati"}
+            {loading ? <><Spinner />{mode === "login" ? "Accesso in corso..." : "Registrazione in corso..."}</> : mode === "login" ? "Accedi" : "Registrati"}
           </Button>
         </form>
 

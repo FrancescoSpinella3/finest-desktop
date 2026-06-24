@@ -28,7 +28,7 @@ function createWindow() {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
     },
   });
 
@@ -38,12 +38,6 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, "..", "dist", "index.html"));
   }
-
-  mainWindow.webContents.on("before-input-event", (_e, input) => {
-    if (input.control && input.shift && input.key.toLowerCase() === "i") {
-      mainWindow.webContents.openDevTools({ mode: "detach" });
-    }
-  });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
@@ -98,6 +92,22 @@ app.on("window-all-closed", () => {
 });
 
 /* ---------------------------------------------------------------- */
+/* IPC: rate limiter                                                */
+/* ---------------------------------------------------------------- */
+
+// Sliding window rate limiter: rejects calls exceeding `limit` per `windowMs`.
+function rateLimitedHandle(channel, handler, limit = 20, windowMs = 1000) {
+  const timestamps = [];
+  ipcMain.handle(channel, (event, ...args) => {
+    const now = Date.now();
+    while (timestamps.length > 0 && now - timestamps[0] > windowMs) timestamps.shift();
+    if (timestamps.length >= limit) throw new Error("Rate limit exceeded");
+    timestamps.push(now);
+    return handler(event, ...args);
+  });
+}
+
+/* ---------------------------------------------------------------- */
 /* IPC: data layer                                                  */
 /* ---------------------------------------------------------------- */
 
@@ -116,21 +126,21 @@ ipcMain.handle("ui:setTitleBarOverlay", (_e, isDark) => {
   mainWindow?.setTitleBarOverlay(isDark ? OVERLAY_DARK : OVERLAY_LIGHT);
 });
 
-ipcMain.handle("data:getAll", () => store.getAll());
+rateLimitedHandle("data:getAll", () => store.getAll(), 30);
 
-ipcMain.handle("data:addCategory", (_e, category) => store.addCategory(category));
-ipcMain.handle("data:updateCategory", (_e, id, patch) => store.updateCategory(id, patch));
-ipcMain.handle("data:deleteCategory", (_e, id) => store.deleteCategory(id));
+rateLimitedHandle("data:addCategory", (_e, category) => store.addCategory(category));
+rateLimitedHandle("data:updateCategory", (_e, id, patch) => store.updateCategory(id, patch));
+rateLimitedHandle("data:deleteCategory", (_e, id) => store.deleteCategory(id));
 
-ipcMain.handle("data:addTransaction", (_e, tx) => store.addTransaction(tx));
-ipcMain.handle("data:updateTransaction", (_e, id, patch) => store.updateTransaction(id, patch));
-ipcMain.handle("data:deleteTransaction", (_e, id) => store.deleteTransaction(id));
+rateLimitedHandle("data:addTransaction", (_e, tx) => store.addTransaction(tx));
+rateLimitedHandle("data:updateTransaction", (_e, id, patch) => store.updateTransaction(id, patch));
+rateLimitedHandle("data:deleteTransaction", (_e, id) => store.deleteTransaction(id));
 
-ipcMain.handle("data:addGoal", (_e, goal) => store.addGoal(goal));
-ipcMain.handle("data:updateGoal", (_e, id, patch) => store.updateGoal(id, patch));
-ipcMain.handle("data:deleteGoal", (_e, id) => store.deleteGoal(id));
-ipcMain.handle("data:contributeGoal", (_e, id, amount) => store.contributeGoal(id, amount));
+rateLimitedHandle("data:addGoal", (_e, goal) => store.addGoal(goal));
+rateLimitedHandle("data:updateGoal", (_e, id, patch) => store.updateGoal(id, patch));
+rateLimitedHandle("data:deleteGoal", (_e, id) => store.deleteGoal(id));
+rateLimitedHandle("data:contributeGoal", (_e, id, amount) => store.contributeGoal(id, amount));
 
-ipcMain.handle("data:addSubscription", (_e, sub) => store.addSubscription(sub));
-ipcMain.handle("data:updateSubscription", (_e, id, patch) => store.updateSubscription(id, patch));
-ipcMain.handle("data:deleteSubscription", (_e, id) => store.deleteSubscription(id));
+rateLimitedHandle("data:addSubscription", (_e, sub) => store.addSubscription(sub));
+rateLimitedHandle("data:updateSubscription", (_e, id, patch) => store.updateSubscription(id, patch));
+rateLimitedHandle("data:deleteSubscription", (_e, id) => store.deleteSubscription(id));

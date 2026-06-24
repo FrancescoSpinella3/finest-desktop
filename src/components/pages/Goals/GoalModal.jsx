@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Modal from "../../ui/Modal";
 import { Input, Select } from "../../ui/Input";
 import Button from "../../ui/Button";
+import Spinner from "../../ui/Spinner";
 import { useData } from "../../../context/DataContext";
 
 const TYPE_OPTIONS = [
@@ -17,6 +18,7 @@ export default function GoalModal({ open, onClose, editingGoal, onSaved }) {
 
   const [form, setForm] = useState(emptyForm());
   const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
   function emptyForm() {
     return { name: "", type: "saving", targetAmount: "", period: "mensile", categoryId: "" };
@@ -63,13 +65,14 @@ export default function GoalModal({ open, onClose, editingGoal, onSaved }) {
 
     const action = editingGoal ? updateGoal(editingGoal.id, payload) : addGoal(payload);
 
+    setSubmitting(true);
     action.then(() => {
       onSaved(editingGoal ? "Obiettivo aggiornato" : "Obiettivo creato");
       onClose();
     }).catch((err) => {
       console.error("GoalModal submit error:", err);
       setErrors({ submit: "Errore durante il salvataggio. Riprova." });
-    });
+    }).finally(() => setSubmitting(false));
   }
 
   return (
@@ -77,7 +80,7 @@ export default function GoalModal({ open, onClose, editingGoal, onSaved }) {
       title={editingGoal ? "Modifica obiettivo" : "Nuovo obiettivo"}
       subText="Definisci un obiettivo di ricavi, un limite di spesa o un obiettivo di risparmio"
       open={open}
-      onClose={onClose}
+      onClose={submitting ? () => {} : onClose}
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <Select
@@ -136,10 +139,12 @@ export default function GoalModal({ open, onClose, editingGoal, onSaved }) {
 
         {errors.submit && <p className="text-xs text-red-500">{errors.submit}</p>}
         <div className="flex justify-end gap-3 mt-2">
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={onClose} disabled={submitting}>
             Annulla
           </Button>
-          <Button type="submit">{editingGoal ? "Salva modifiche" : "Crea obiettivo"}</Button>
+          <Button type="submit" disabled={submitting}>
+            {submitting ? <Spinner /> : editingGoal ? "Salva modifiche" : "Crea obiettivo"}
+          </Button>
         </div>
       </form>
     </Modal>
