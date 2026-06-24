@@ -1,4 +1,4 @@
-import { Camera, KeyRound, Trash2, UserRound, X } from "lucide-react";
+import { Camera, KeyRound, Star, Trash2, UserRound, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { useAuth } from "../../../context/AuthContext";
 import { supabase } from "../../../lib/supabase";
@@ -16,16 +16,19 @@ function Card({ children, className = "" }) {
   );
 }
 
-function CardHeader({ icon: Icon, iconColor = "bg-(--main-color)/10 text-(--main-color)", title, description }) {
+function CardHeader({ icon: Icon, iconColor = "bg-(--main-color)/10 text-(--main-color)", title, description, children }) {
   return (
-    <div className="flex items-start gap-3 mb-5 shrink-0">
-      <div className={`size-9 rounded-lg flex items-center justify-center shrink-0 ${iconColor}`}>
-        <Icon className="size-4.5" />
+    <div className="flex items-center justify-between mb-5">
+      <div className="flex items-start gap-3 shrink-0">
+        <div className={`size-9 rounded-lg flex items-center justify-center shrink-0 ${iconColor}`}>
+          <Icon className="size-4.5" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-(--dark-main-color) dark:text-(--light-color)">{title}</p>
+          {description && <p className="text-xs text-(--dark-third-color) mt-0.5">{description}</p>}
+        </div>
       </div>
-      <div>
-        <p className="text-sm font-semibold text-(--dark-main-color) dark:text-(--light-color)">{title}</p>
-        {description && <p className="text-xs text-(--dark-third-color) mt-0.5">{description}</p>}
-      </div>
+      {children}
     </div>
   );
 }
@@ -137,7 +140,12 @@ function ProfileCard({ user, profile, onRefresh }) {
 
   return (
     <Card>
-      <CardHeader icon={UserRound} title="Profilo" description="Le tue informazioni personali" />
+      <CardHeader icon={UserRound} title="Profilo" description="Le tue informazioni personali">
+        <Button variant="premium">
+          <Star className="size-5" />
+          Acquista Premium
+        </Button>
+      </CardHeader>
 
       {/* Avatar */}
       <div className="flex flex-col items-center gap-3 py-5 border-y border-(--light-border-color) dark:border-(--dark-border-color) mb-5 shrink-0">

@@ -9,6 +9,8 @@ export default function Button({ children, variant = "primary", className = "", 
     danger: "bg-(--danger-color) hover:bg-(--danger-hover-color) text-white",
     ghost:
       "bg-transparent text-(--dark-third-color) hover:text-(--dark-main-color) dark:hover:text-(--light-color)",
+      premium:
+      "bg-yellow-400 hover:bg-yellow-500 text-yellow-950"
   };
 
   return (
