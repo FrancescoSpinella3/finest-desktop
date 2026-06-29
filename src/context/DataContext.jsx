@@ -40,7 +40,14 @@ function nextRenewalAfter(day, afterDate) {
   return clampDay(nm > 11 ? after.getFullYear() + 1 : after.getFullYear(), nm % 12, day);
 }
 
-async function processRenewals(subs, uid) {
+function toLocalDateStr(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+async function processRenewals(subs, uid, existingTxs) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const newTxs = [];
@@ -56,18 +63,25 @@ async function processRenewals(subs, uid) {
     while (true) {
       const next = nextRenewalAfter(sub.expiryDay, checkFrom);
       if (next > today) break;
-      const dateStr = next.toISOString().split("T")[0];
-      newTxs.push({
-        userId: uid, type: "expense", description: sub.name,
-        amount: sub.cost, categoryId: sub.categoryId,
-        date: dateStr, autoRenewal: true,
-      });
+      const dateStr = toLocalDateStr(next);
+      const alreadyExists =
+        existingTxs.some((t) => t.autoRenewal && t.date === dateStr && t.categoryId === sub.categoryId) ||
+        newTxs.some((t) => t.date === dateStr && t.categoryId === sub.categoryId);
+      if (!alreadyExists) {
+        newTxs.push({
+          userId: uid, type: "expense", description: sub.name,
+          amount: sub.cost, categoryId: sub.categoryId,
+          date: dateStr, autoRenewal: true,
+        });
+      }
       lastAutoRenewal = dateStr;
       checkFrom = next;
     }
 
     if (lastAutoRenewal !== sub.lastAutoRenewal) {
-      subUpdates.push({ id: sub.id, lastAutoRenewal });
+      subUpdates.push({ id: sub.id, lastAutoRenewal, lastRenewal: lastAutoRenewal });
+    } else if (sub.lastAutoRenewal && sub.lastAutoRenewal !== sub.lastRenewal) {
+      subUpdates.push({ id: sub.id, lastRenewal: sub.lastAutoRenewal });
     }
   }
 
@@ -76,8 +90,8 @@ async function processRenewals(subs, uid) {
     const { data } = await supabase.from("transactions").insert(newTxs).select();
     inserted = (data || []).map(strip);
   }
-  for (const { id, lastAutoRenewal } of subUpdates) {
-    await supabase.from("subscriptions").update({ lastAutoRenewal }).eq("id", id);
+  for (const { id, ...patch } of subUpdates) {
+    await supabase.from("subscriptions").update(patch).eq("id", id);
   }
   return inserted;
 }
@@ -116,7 +130,22 @@ export function DataProvider({ children }) {
       }
 
       const subsData = (subs.data || []).map(strip);
-      const renewedTxs = await processRenewals(subsData, uid);
+      let existingTxs = (txs.data || []).map(strip);
+
+      // Rimuove i duplicati di autoRenewal già presenti (stessa data + categoria)
+      const seen = new Set();
+      const duplicateIds = [];
+      for (const t of existingTxs) {
+        if (!t.autoRenewal) continue;
+        const key = `${t.date}|${t.categoryId}`;
+        if (seen.has(key)) { duplicateIds.push(t.id); } else { seen.add(key); }
+      }
+      if (duplicateIds.length > 0) {
+        await supabase.from("transactions").delete().in("id", duplicateIds);
+        existingTxs = existingTxs.filter((t) => !duplicateIds.includes(t.id));
+      }
+
+      const renewedTxs = await processRenewals(subsData, uid, existingTxs);
       const allTxs = [...(txs.data || []).map(strip), ...renewedTxs]
         .sort((a, b) => new Date(b.date) - new Date(a.date));
 

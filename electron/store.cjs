@@ -164,6 +164,13 @@ function contributeGoal(id, amount) {
 
 /* -------------------------- Auto Renewals ------------------------------- */
 
+function toLocalDateStr(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 function clampDay(year, month, day) {
   const lastDay = new Date(year, month + 1, 0).getDate();
   return new Date(year, month, Math.min(day, lastDay));
@@ -178,10 +185,25 @@ function nextRenewalAfter(day, afterDate) {
   return clampDay(nm > 11 ? after.getFullYear() + 1 : after.getFullYear(), nm % 12, day);
 }
 
+function deduplicateRenewals() {
+  const seen = new Set();
+  const before = db.transactions.length;
+  db.transactions = db.transactions.filter((t) => {
+    if (!t.autoRenewal) return true;
+    const key = `${t.date}|${t.categoryId}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  if (db.transactions.length < before) persist();
+}
+
 function processRenewals() {
+  deduplicateRenewals();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   let created = 0;
+  let dirty = false;
 
   for (const sub of db.subscriptions) {
     if (!sub.cost || !sub.categoryId || !sub.lastRenewal) continue;
@@ -194,23 +216,38 @@ function processRenewals() {
       const next = nextRenewalAfter(sub.expiryDay, checkFrom);
       if (next > today) break;
 
-      db.transactions.push({
-        id: uid(),
-        type: "expense",
-        description: sub.name,
-        amount: sub.cost,
-        categoryId: sub.categoryId,
-        date: next.toISOString().split("T")[0],
-        autoRenewal: true,
-      });
+      const dateStr = toLocalDateStr(next);
+      const alreadyExists = db.transactions.some(
+        (t) => t.autoRenewal && t.date === dateStr && t.categoryId === sub.categoryId
+      );
 
-      sub.lastAutoRenewal = next.toISOString().split("T")[0];
+      if (!alreadyExists) {
+        db.transactions.push({
+          id: uid(),
+          type: "expense",
+          description: sub.name,
+          amount: sub.cost,
+          categoryId: sub.categoryId,
+          date: dateStr,
+          autoRenewal: true,
+        });
+        created++;
+      }
+
+      sub.lastAutoRenewal = dateStr;
+      sub.lastRenewal = dateStr;
+      dirty = true;
       checkFrom = next;
-      created++;
+    }
+
+    // Sincronizza lastRenewal anche se non ci sono nuovi rinnovi da inserire
+    if (sub.lastAutoRenewal && sub.lastAutoRenewal !== sub.lastRenewal) {
+      sub.lastRenewal = sub.lastAutoRenewal;
+      dirty = true;
     }
   }
 
-  if (created > 0) persist();
+  if (created > 0 || dirty) persist();
   return created;
 }
 
